@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Launcher for a locally built Hookshot (see rebuild.sh).
+#
+#   hookshot-launch            play
+#   hookshot-launch --prepare  translate the game's shaders and exit (needs free VRAM)
+#   hookshot-launch --log      print the path of the last run's log, and exit
+#   hookshot-launch <args>     any other argument goes straight to the game
+#
+# What it hardens:
+#   - no update check: the game would otherwise ask api.github.com for the newest release and could
+#     hand off to an updater that downloads binaries (host/hos_update.c). This build installs no
+#     updater at all, and HOOKSHOT_NO_UPDATE_CHECK=1 stops the request as well.
+#   - no inherited LD_PRELOAD / LD_LIBRARY_PATH from your login environment.
+#   - always runs from the game folder, where image.bin, romfs, the caches and the log live.
+set -euo pipefail
+
+CONF=${HOOKSHOT_LOCAL_CONF:-${XDG_CONFIG_HOME:-$HOME/.config}/hookshot/local-build.conf}
+GAME=${HOOKSHOT_GAME_DIR:-}
+
+if [ -z "$GAME" ] && [ -f "$CONF" ]; then
+    GAME=$(awk -F= '/^GAME=/{print $2}' "$CONF" | head -1)
+fi
+GAME=${GAME:-$HOME/Games/Hookshot}
+GAME=${GAME/#\~/$HOME}
+
+case ${1:-} in
+    --log)
+        log=$(ls -t "$GAME"/hookshot_log.txt "$GAME"/hookshot_log.*.txt 2>/dev/null | head -1)
+        [ -n "$log" ] && printf '%s\n' "$log" || { echo "no log in $GAME yet (the game has not run from there)" >&2; exit 1; }
+        exit 0 ;;
+esac
+
+cd "$GAME" 2>/dev/null || { echo "hookshot-launch: no game folder at $GAME (set HOOKSHOT_GAME_DIR or re-run 'rebuild.sh install')" >&2; exit 1; }
+if [ ! -x ./hookshot ] || [ ! -f ./image.bin ]; then
+    echo "hookshot-launch: $GAME has no built game (hookshot / image.bin missing). Build it with rebuild.sh" >&2
+    exit 1
+fi
+
+unset LD_PRELOAD LD_LIBRARY_PATH
+export HOOKSHOT_NO_UPDATE_CHECK=1
+
+case ${1:-} in
+    --prepare) exec ./hookshot --prepare-shaders ;;
+    "")        exec ./hookshot ;;
+    *)         exec ./hookshot "$@" ;;
+esac
