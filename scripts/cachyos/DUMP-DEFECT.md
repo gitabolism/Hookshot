@@ -330,3 +330,12 @@ Open, low severity, cosmetic at worst, no action taken. Kept here so that:
 - a future `rom-check --full` showing the same `3 bad` is understood as known and not a regression;
 - a future dump of the same title can be checked against the three hashes in §4;
 - nobody re-derives this, or "fixes" it by deleting files the game expects to exist.
+
+
+# Evidences collected by the user in game:
+
+![alt text](image.png)
+![alt text](image-1.png)
+![alt text](image-4.png)
+![alt text](image-2.png)
+![alt text](image-3.png)
